@@ -1,8 +1,8 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-
-
-
+import { type StateCreator, create } from "zustand";
+import { devtools, persist } from "zustand/middleware";
+import { firebaseStorage } from "../../storages/firebase.storage";
+import { logger } from "../middlewares/logger.middleware";
+import { useWeddingBoundStore } from "../wedding";
 
 
 
@@ -18,17 +18,35 @@ interface Actions {
 }
 
 
+const storeApi: StateCreator<PersonState & Actions, [["zustand/devtools", unknown]]>  = (set) => ({
+    
+    firstName: '',
+    lastName: '',
+
+    setFirstName: ( value: string ) => set( ({ firstName: value}), false, 'setFirstName'),
+    setLastName: ( value: string ) => set( ({ lastName: value}), false, 'setLastName'),
+});
+
+
+
+
 
 export const usePersonStore = create<PersonState & Actions>()( 
-    persist(
-        (set) => ({
-    
-            firstName: '',
-            lastName: '',
-    
-            setFirstName: ( value: string ) => set(state => ({ firstName: value})),
-            setLastName: ( value: string ) => set(state => ({ lastName: value})),
-        }), {
-          name: 'person-storage'  
-    })
+    devtools(
+        persist(
+            storeApi
+            ,{ 
+                name: 'person-storage',
+                storage: firebaseStorage,
+            }
+        )
+    )
 )
+
+usePersonStore.subscribe( (nextState, ) => {
+
+    const { firstName, lastName } = nextState;
+
+    useWeddingBoundStore.getState().setFirstName(firstName);
+    useWeddingBoundStore.getState().setLastName(lastName);
+})
